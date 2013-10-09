@@ -5,8 +5,8 @@
 
 from time import sleep
 import serial
-from multiprocessing import Process, Value, Queue, Manager
-from Queue import Empty
+import multiprocessing
+import threading
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as img
@@ -18,14 +18,14 @@ class RFE( object ):
 		self.dev = serial.Serial( dev )
 		self.dev.baudrate = 500000
 		self.dev.timeout = 1.0
-		self.mgr = Manager()
+		self.mgr = multiprocessing.Manager()
 		self.config = self.mgr.dict()
-		self.sweep_data = Queue()
-		self.lcd_data = Queue()
-		self.sweep_active = Value( 'b', False )
-		self.serialer = Process( target=self.serial_worker, args=() )
-		self.sweeper = Process( target=self.sweep_worker, args=() )
-		self.lcder = Process( target=self.lcd_worker, args=() )
+		self.sweep_data = multiprocessing.Queue()
+		self.lcd_data = multiprocessing.Queue()
+		self.sweep_active = multiprocessing.Value( 'b', False )
+		self.serialer = multiprocessing.Process( target=self.serial_worker, args=() )
+		self.sweeper = multiprocessing.Process( target=self.sweep_worker, args=() )
+		self.lcder = multiprocessing.Process( target=self.lcd_worker, args=() )
 		self.start()
 		self.Request_Config()
 
