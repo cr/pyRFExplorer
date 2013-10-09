@@ -5,12 +5,12 @@
 
 from time import sleep
 import serial
-import multiprocessing
-#import threading
-
+from multiprocessing import Process, Value, Queue, Manager
+from Queue import Empty
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as img
+
 
 class RFE( object ):
 
@@ -18,14 +18,14 @@ class RFE( object ):
 		self.dev = serial.Serial( dev )
 		self.dev.baudrate = 500000
 		self.dev.timeout = 1.0
-		self.mgr = multiprocessing.Manager()
+		self.mgr = Manager()
 		self.config = self.mgr.dict()
-		self.sweep_data = multiprocessing.Queue()
-		self.lcd_data = multiprocessing.Queue()
-		self.sweep_active = multiprocessing.Value( 'b', False )
-		self.serialer = multiprocessing.Process( target=self.serial_worker, args=() )
-		self.sweeper = multiprocessing.Process( target=self.sweep_worker, args=() )
-		self.lcder = multiprocessing.Process( target=self.lcd_worker, args=() )
+		self.sweep_data = Queue()
+		self.lcd_data = Queue()
+		self.sweep_active = Value( 'b', False )
+		self.serialer = Process( target=self.serial_worker, args=() )
+		self.sweeper = Process( target=self.sweep_worker, args=() )
+		self.lcder = Process( target=self.lcd_worker, args=() )
 		self.start()
 		self.Request_Config()
 
@@ -211,7 +211,7 @@ class RFE( object ):
 			b = ord(b)
 			mem += [b >> i & 1 for i in xrange(7,-1,-1)]
 		if len(mem) < 128*64:
-			mem = [0]*(128*64-len(mem)) + mem #TODO: why is the first memory byte missing? wtf!
+			mem = [0]*(128*64-len(mem)) + mem #TODO: wtf! missing byte at beginning of memory
 		lcd = np.zeros( dtype=np.int, shape=(64,128) )
 		for y in xrange( 64 ):
 			for x in xrange( 128 ):
@@ -234,7 +234,8 @@ class RFE( object ):
 	def lcd_worker( self ):
 		while True:
 			lcd = self.lcd_data.get()
-			plt.imshow( lcd )
+			imgplot = plt.imshow( lcd )
+			plt.draw()
 			plt.show()
 
 ##################################################################################################
@@ -244,25 +245,3 @@ class RFE( object ):
 		while True:
 			sweep = self.sweep_data.get()
 			print sweep
-
-##################################################################################################
-
-
-import Tkinter as tk
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
-
-class MainWindow( object ):
-
-	def __init__( self ):
-		self.application = tk.Tk()
-		self.application.focus_force()
-		self.application.protocol
-		self.frame = tk.Frame()
-		self.figure = plt.figure( figsize=(4,4), dpi=100 )
-		self.canvas = FigureCanvasTkAgg( self.figure, master=self.application )
-		subplot = figure.add_subplot( 111 )
-		subplot.get_xaxis().set_visible( False )
-		subplot.get_yaxis().set_visible( False )
-		subplot.get_axes().set_frame_on( True )
-		img = subplot.imshow( np.zeros( dtype=np.int, shape=(64,128) ) )
-		canvas.draw()
