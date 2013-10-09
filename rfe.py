@@ -1,7 +1,20 @@
 #!/usr/bin/env python
 
-import pyrfe as rfe
+import signal
+import sys
+import pyrfe
 from IPython import embed
 
-rfe.com.connect()
+def graceful_exit( signal, frame ):
+	print "bye!"
+	rfe.stop()
+	sys.exit( 0 )
+
+rfe = pyrfe.rfe.RFE( '/dev/tty.SLAB_USBtoUART' )
+
+signal.signal( signal.SIGINT, graceful_exit )
+signal.signal( signal.SIGTERM, graceful_exit )
+
 embed()
+
+rfe.stop()

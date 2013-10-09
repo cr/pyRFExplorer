@@ -2,7 +2,7 @@
 # http://code.google.com/p/rfexplorer/wiki/RFExplorerRS232Interface
 
 #import usbcom as com
-import usbtty as com
+import ttycom as com
 import array
 
 def to_ascii( value, digits, binary=False ):
@@ -19,18 +19,18 @@ def from_ascii( s, binary=False ):
 	else:
 		return int(s)
 
+def init():
+	com.connect()
+
 def send( command ):
 	l = len( command )
 	if l>62:
 		raise Exception( 'command is longer than 62+2 bytes' )
-	c = "#%c%s" % (chr(c), command)
+	c = "#%c%s" % (chr(len(command)+2), command)
 	com.write( c )
 
 def recv():
-	inp = ""
-	while inp[-2:] != "\n\r":
-		inp += com.read( 1 )
-	return inp[:-2]
+	return com.read( until="\r\n" )
 
 def Current_Config( Start_Freq, End_Freq, Amp_Top, Amp_Bottom ):
 	""" Send current Spectrum Analyzer configuration data.
@@ -44,26 +44,52 @@ def Request_Config():
 	"""
 	c = "C0"
 	send( c )
-	data = recv()
-	if data[:7] != "#C2-F:":
+
+	setupstr = recv()
+	configstr = recv()
+
+	print repr(setupstr)
+	print repr(configstr)
+
+	if setupstr[:6] != "#C2-M:":
+		raise Exception( 'received unexpected setup packet' )
+	if configstr[:6] != "#C2-F:":
 		raise Exception( 'received unexpected config packet' )
 
-	cfgarray = data.split( ',' )
+	setupfields = ('Main_Model','Expansion_Model','FirmwareVersion')
+	setuparray = setupstr[7:].split( ',' )
+	setupdict = dict( zip( setupfields, setuparray ) )
 
-	fields = ('Start_Freq','Freq_Step','Amp_Top','Amp_Bottom','Sweep_Steps',
+	configfields = ('Start_Freq','Freq_Step','Amp_Top','Amp_Bottom','Sweep_Steps',
 		'ExpModuleActive','CurrentMode','Min_Freq','Max_Freq','Max_Span','RBW')
+	configarray = configstr[7:].split( ',' )
+	if len(configarray) == len(configfields)-1:
+		configarray.append( '-1' )  # Firmware version 1.08 or older
+	if len(configarray) != len(configfields):
+		raise Exception( 'received unexpected number of config values' )
+	configdict = dict( zip( configfields, configarray ) )
 
-	if len(cfgarray) == len(fields)-1:
-		fields = fileds[:-1]  # Firmware version 1.08 or older
-	elif len(cfgarray) > len(fields):
-		raise Exception( 'received too many config values' )
-	elif len(cfgarray) < len(fields)-1:
-		raise Exception( 'received too few config values' )
+	cfg = dict(setupdict.items() + configdict.items())
 
-	cfg = dict( zip( fields, cfgarray ) )
 
-	ascfields = ('Start_Freq','Freq_Step','Amp_Top','Amp_Bottom','Sweep_Steps',
-		Min_Freq','Max_Freq','Max_Span','RBW')
+
+	# Decode fields
+	for f in configfields + ('Main_Model','Expansion_Model'):
+		cfg[f] = int( cfg[f] )
+
+	cfg['ExpModuleActive'] = cfg['ExpModuleActive'] == 1
+
+	main_model = {0:'433M',1:'868M',2:'915M',3:'WSUSB1G',4:'2.4G',5:'WSUSB3G'}
+	cfg['Main_Model'] = main_model[cfg['Main_Model']]
+
+	expansion_model = {0:'433M',1:'868M',2:'915M',3:'WSUB1G',4:'2.4G',5:'WSUB3G', 255:''}
+	cfg['Expansion_Model'] = expansion_model[cfg['Expansion_Model']]
+
+	current_mode = {0:'SPECTRUM_ANALYZER',1:'RF_GENERATOR',2:'WIFI_ANALYZER',255:'UNKNOWN'}
+	cfg['CurrentMode'] = current_mode[cfg['CurrentMode']]
+
+
+	return cfg
 
 
 def Request_Hold():
@@ -79,8 +105,8 @@ def Request_Shutdown():
 	return send( c )
 
 def Enable_DumpScreen():
-	"""  Request RFE to dump all screen data. It will remain active until
-	     Disable_DumpScreen is sent. 
+	""" Request RFE to dump all screen data. It will remain active until
+	    Disable_DumpScreen is sent. 
 	"""
 	c = "D1"
 	return send( c )
