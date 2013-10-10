@@ -244,9 +244,14 @@ class RFE( object ):
 
 ##################################################################################################
 
-import Tkinter as tk
+from Tkinter import *
 import matplotlib as mpl
 mpl.use( 'TkAgg' )
+font = {'family' : 'Arial',
+        'weight' : 'bold',
+        'size'   : 8}
+mpl.rc('font', **font)
+
 import matplotlib.pyplot as plt
 import matplotlib.image as img
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
@@ -260,36 +265,120 @@ class MainWindow( object ):
 	sweep_fstop = 0
 	sweep_flen = 0
 
-	def __init__( self, sweep_data, lcd_data ):
-		self.sweep_data = sweep_data
-		self.lcd_data = lcd_data
+	def __init__( self, sweep_data_queue, lcd_data_queue ):
+		self.sweep_data = sweep_data_queue
+		self.lcd_data = lcd_data_queue
 
-		self.application = tk.Tk()
-		self.application.wm_title( 'RF Explorer' )
+		self.application = Tk()
+		self.application.wm_title( 'RF Explorer' )		
 		self.application.focus_force()
-		self.application.protocol( "WM_DELETE_WINDOW", self.close )
-		self.frame = tk.Frame()
+		self.application.protocol( 'WM_DELETE_WINDOW', self.close )
+
+		win = Frame(self.application, bg='gray')
+		win.pack(side=LEFT, fill=Y)
+
+		right = Frame(self.application, bg='red', width=400, height=400)
+		right.pack(side=RIGHT, fill=BOTH, expand=1)
+
+		frame_a = LabelFrame(win, text='Info', padx=5, pady=5)
+		frame_b = LabelFrame(win, text='Sweep control', padx=5, pady=5)
+		frame_c = LabelFrame(win, text='Options', padx=5, pady=5)
+		frame_a.grid(sticky=E+W)
+		frame_b.grid(sticky=E+W)
+		frame_c.grid(sticky=E+W)
+
+		for frame in frame_a, frame_b, frame_c:
+		    for col in 0, 1, 2:
+		        frame.columnconfigure(col, weight=1)
+
+		model = StringVar()
+		model.set('WSUSB3G')
+		Label(win, text='Main model:').grid(in_=frame_a, row=0, column=0, sticky=E)
+		Label(win, textvariable=model).grid(in_=frame_a, row=0, column=1, sticky=W)
+
+		exp = StringVar()
+		exp.set('WSUSB3G')
+		Label(win, text='Expansion:').grid(in_=frame_a, row=1, column=0, sticky=E)
+		Label(win, textvariable=exp).grid(in_=frame_a, row=1, column=1, sticky=W)
+
+		fw = StringVar()
+		fw.set('01.11')
+		Label(win, text='Firmware:').grid(in_=frame_a, row=2, column=0, sticky=E)
+		Label(win, textvariable=fw).grid(in_=frame_a, row=2, column=1, sticky=W)
+
+		steps = StringVar()
+		steps.set('116')
+		Label(win, text='Sweep steps:').grid(in_=frame_a, row=3, column=0, sticky=E)
+		Label(win, textvariable=steps).grid(in_=frame_a, row=3, column=1, sticky=W)
+
+		fmin = StringVar()
+		fmin.set('15000')
+		Label(win, text='f min (kHz):').grid(in_=frame_a, row=4, column=0, sticky=E)
+		Label(win, textvariable=fmin).grid(in_=frame_a, row=4, column=1, sticky=W)
+
+		fmax = StringVar()
+		fmax.set('2700000')
+		Label(win, text='f max (kHz):').grid(in_=frame_a, row=5, column=0, sticky=E)
+		Label(win, textvariable=fmax).grid(in_=frame_a, row=5, column=1, sticky=W)
+
+
+		Label(win, text='f start').grid(in_=frame_b, row=0, column=0, sticky=W)
+		Entry(win, width=9).grid(       in_=frame_b, row=0, column=1, sticky=W)
+		Label(win, text='kHz').grid(    in_=frame_b, row=0, column=2, sticky=E)
+
+		Label(win, text='f end').grid(in_=frame_b, row=1, column=0, sticky=W)
+		Entry(win, width=9).grid(     in_=frame_b, row=1, column=1, sticky=W)
+		Label(win, text='kHz').grid(  in_=frame_b, row=1, column=2, sticky=E)
+
+		Label(win, text='Amp top').grid(in_=frame_b, row=2, column=0, sticky=W)
+		Entry(win, width=9).grid(       in_=frame_b, row=2, column=1, sticky=W)
+		Label(win, text='dB').grid(     in_=frame_b, row=2, column=2, sticky=E)
+
+		Label(win, text='Amp bottom').grid(in_=frame_b, row=3, column=0, sticky=W)
+		Entry(win, width=9).grid(          in_=frame_b, row=3, column=1, sticky=W)
+		Label(win, text='dB').grid(        in_=frame_b, row=3, column=2, sticky=E)
+
+		sweep = IntVar()
+		lcddump = IntVar()
+		lcddisp = IntVar()
+		Checkbutton(win, text='Sweep data', variable=sweep).pack(in_=frame_c, anchor=W)
+		Checkbutton(win, text='LCD dump', variable=lcddump).pack(in_=frame_c, anchor=W)
+		Checkbutton(win, text='LCD display', variable=lcddisp).pack(in_=frame_c, anchor=W)
+
+		self.frame = right
 		self.figure = mpl.figure.Figure( figsize=(8,6), dpi=100 )
-		self.canvas = FigureCanvasTkAgg( self.figure, master=self.application )
-		#self.figure.axis('off')
-		#self.lcd_subplot = self.figure.add_subplot( 2, 1, 1 )
+		self.canvas = FigureCanvasTkAgg( self.figure, master=self.frame )
+
 		gs = mpl.gridspec.GridSpec( 3, 1 )
 		self.sweep_subplot = self.figure.add_subplot( gs[1:,0] )
+		self.lcd_subplot = self.figure.add_subplot( gs[0,0] )
 
-		#t = np.arange(0.0,3.0,0.01)
-		#s = np.sin(2*np.pi*t)
-		#self.subplot.plot(t,s)
-		#self.subplot.get_xaxis().set_visible( False )
-		#self.subplot.get_yaxis().set_visible( False )
-		#self.subplot.get_axes().set_frame_on( True )
-		#self.subplot.get_axes().patch.set_visible( False )
+		# style figure
+		#self.figure.patch.set_alpha( 0.0 ) # makes background patch invisible
 		#self.figure.patch.set_visible( False )
-		#self.figure.gca().set_frame_on( False )
-		#self.img = self.subplot.imshow( np.zeros( dtype=np.int, shape=(64,128) ) )
-		#self.img = self.subplot.imshow( np.random.random((64, 128)), cmap='Greys', interpolation="nearest" )
-		self.img = self.figure.figimage( np.random.random((64*3, 128*3)), cmap='Greys', xo=15, yo=408 )
+		self.figure.patch.set_color('black')
+
+		# style lcd
+		self.lcd_subplot.set_axis_off() # will show graph only, rest is transparent
+
+		# style sweep
+		#pself.sweep_subplot.patch.set_alpha( 0.0 )      # makes graph background transparent
+		self.sweep_subplot.patch.set_visible( False )  # makes graph background invisible
+		self.sweep_subplot.xaxis.grid( color='gray', linestyle='dashed', alpha=0.3 )
+		self.sweep_subplot.yaxis.grid( color='gray', linestyle='dashed', alpha=0.3 )
+		self.sweep_subplot.set_frame_on( False )  # remove border around graph
+		#self.sweep_subplot.spines['bottom'].set_color( 'white' )   # bottom border color (it's off)
+		#self.sweep_subplot.spines['top'].set_color( 'white' )      # top border color (it's off)
+		#self.sweep_subplot.xaxis.label.set_color( 'white' )        # label color (we have none)
+		self.sweep_subplot.tick_params( axis='x', colors='white' )  # ticks and tick labels
+		self.sweep_subplot.tick_params( axis='y', colors='white' )  # ticks and tick labels
+
+		#self.img = self.figure.figimage( np.random.random((64*3, 128*3)), cmap='Greys', xo=15, yo=408 )
+		self.img = self.lcd_subplot.matshow( np.random.random((64*3, 128*3)), cmap='Greys' )
+
+		self.figure.tight_layout()
 		self.canvas.show()
-		self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+		self.canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
 		self.update()
 
 	def close( self ):
@@ -307,16 +396,41 @@ class MainWindow( object ):
 				self.sweep_fstart = freq[0]
 				self.sweep_fstop = freq[-1]
 				self.sweep_flen = len(freq)
+				mm = (np.min(self.sweep_min),np.max(self.sweep_max))
+				self.sweep_subplot.set_ylim( mm )
+				xoff = (self.sweep_fstop - self.sweep_fstart)*0.05
+				self.sweep_subplot.set_xlim( (self.sweep_fstart-xoff, self.sweep_fstop+xoff) )
+				try:
+					self.pminmax.remove()
+					self.pavg.remove()
+					self.pdb.remove()
+				except:
+					pass
+				self.pminmax = self.sweep_subplot.fill_between( freq, self.sweep_min, self.sweep_max, facecolor='white', alpha=0.1, linewidth=0.2 )
+				self.pavg, = self.sweep_subplot.plot( freq, self.sweep_avg, color='red', alpha=0.8, linewidth=1.5 )
+				#self.pdb, =  self.sweep_subplot.plot( freq, db, color='#666666', linewidth=0.0, marker='.', alpha=0.5 )
+				self.pdb = self.sweep_subplot.fill_between( freq, self.sweep_avg, db, facecolor='#666666', linewidth=0.2, alpha=0.3 )
 			else:
 				self.sweep_max = np.maximum(self.sweep_max, db)
 				self.sweep_min = np.minimum(self.sweep_min, db)
 				self.sweep_avg = self.sweep_avg*0.95+db*0.05
+				mm = (np.min(self.sweep_min),np.max(self.sweep_max))
+				self.sweep_subplot.set_ylim( mm )
+				#self.pminmax.set_xdata( freq )
+				#self.pminmax.set_ydata( self.sweep_min, self.sweep_max )
+				#self.pavg.set_xdata( freq )
+				#self.pavg.set_ydata( self.sweep_avg )
+				#self.pdb.set_xdata( freq )
+				#self.pdb.set_ydata( db )
+				self.pminmax.remove()
+				self.pminmax = self.sweep_subplot.fill_between( freq, self.sweep_min, self.sweep_max, facecolor='white', alpha=0.1, linewidth=0.2 )
+				self.pavg.remove()
+				self.pavg, = self.sweep_subplot.plot( freq, self.sweep_avg, color='red', alpha=0.8, linewidth=1.5 )
+				self.pdb.remove()
+				#self.pdb, =  self.sweep_subplot.plot( freq, db, color='#666666', linewidth=0.0, marker='.', alpha=0.5 )
+				self.pdb = self.sweep_subplot.fill_between( freq, self.sweep_avg, db, facecolor='#666666', linewidth=0.2, alpha=0.3 )
 
-			self.sweep_subplot.clear()
-			#self.sweep_subplot.set_ylim( minmax )
-			self.sweep_subplot.fill_between( freq, self.sweep_min, self.sweep_max, facecolor='gray', alpha=0.3, linewidth=0.2 )
-			self.sweep_subplot.plot( freq, self.sweep_avg, color='red', alpha=0.8 )
-			self.sweep_subplot.plot( freq, db, color='black', linewidth=0.2 )
+
 			self.canvas.draw()
 			self.application.update()	
 			#sys.stdout.write('S')
