@@ -4,12 +4,10 @@
 # http://code.google.com/p/rfexplorer/wiki/RFExplorerRS232Interface
 
 from time import sleep
+import sys
 import serial
 import multiprocessing
-import threading
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.image as img
 
 
 class RFE( object ):
@@ -24,20 +22,17 @@ class RFE( object ):
 		self.lcd_data = multiprocessing.Queue()
 		self.sweep_active = multiprocessing.Value( 'b', False )
 		self.serialer = multiprocessing.Process( target=self.serial_worker, args=() )
-		self.sweeper = multiprocessing.Process( target=self.sweep_worker, args=() )
-		self.lcder = multiprocessing.Process( target=self.lcd_worker, args=() )
 		self.start()
 		self.Request_Config()
+		# Wait until config is populated
+		while len(self.config)<11:
+			sleep( 0.1 )
 
 	def start( self ):
-		self.sweeper.start()
-		self.lcder.start()
 		self.serialer.start()
 
 	def stop( self ):
 		self.serialer.terminate()
-		self.lcder.terminate()
-		self.sweeper.terminate()
 
 	def write( self, data ):
 	    """Sends data to RF-Explorer. Data can be a string or array.
@@ -58,22 +53,8 @@ class RFE( object ):
 	    else:
 	      inp += self.dev.read( 2 )
 	      while inp[-2:] != until:
-	        inp += self.dev.read()
+	        inp += self.read()
 	    return inp
-
-	def to_ascii( self, value, digits, binary=False ):
-		if binary:
-			b = bin(value)[2:]
-			b = '0'*(digits-len(b))+b
-			return b
-		else:
-			return ("%0"+digits+"d") % value
-
-	def from_ascii( self, s, binary=False ):
-		if binary:
-			raise Exception('not implemented yet')
-		else:
-			return int(s)
 
 	def send( self, command ):
 		l = len( command )
@@ -89,7 +70,7 @@ class RFE( object ):
 		""" Send current Spectrum Analyzer configuration data.
 		    It will change current configuration for RFE.
 		"""
-		c = "C2-F:%s,%s,%s,%s" % (Start_Freq, End_Freq, Amp_Top, Amp_Bottom)
+		c = "C2-F:%07d,%07d,%04d,%04d" % (Start_Freq, End_Freq, Amp_Top, Amp_Bottom)
 		self.send( c )
 
 	def Request_Config( self ):
@@ -145,6 +126,16 @@ class RFE( object ):
 		c = "L1"
 		self.send( c )
 
+	def Enable_Sweep( self ):
+		""" Start processing RFE's sweep events
+		"""
+		self.sweep_active.value = True
+
+	def Disable_Sweep( self ):
+		""" Stop processing RFE's sweep events
+		"""
+		self.sweep_active.value = False
+
 ##################################################################################################
 # Serial Worker World
 
@@ -153,16 +144,22 @@ class RFE( object ):
 			cmd = self.recv()
 			cmd = cmd[:-2]  # chomp EOL
 			if cmd[:2] == '$S':
+				#sys.stdout.write('s')
 				if self.sweep_active.value == True:
-					self.decode_sweep( cmd[3:] )
+					self.decode_sweep( cmd[2:] )
 			elif cmd[:2] == '$D':
-				self.decode_lcd( cmd[3:] )
+				#sys.stdout.write('l')
+				self.decode_lcd( cmd[2:] )
 			elif cmd[:6] == '#C2-M:':
-				self.decode_setup( cmd[7:] )
+				#sys.stdout.write('m')
+				self.decode_setup( cmd[6:] )
 			elif cmd[:6] == '#C2-F:':
-				self.decode_config( cmd[7:] )
+				#sys.stdout.write('f')
+				self.decode_config( cmd[6:] )
 			else:
+				#sys.stdout.write('?')
 				pass  # ignore faulty reads
+			#sys.stdout.flush()
 
 	def decode_setup( self, setupstr ):
 		setupfields = ('Main_Model','Expansion_Model','FirmwareVersion')
@@ -173,7 +170,7 @@ class RFE( object ):
 		for f in ('Main_Model','Expansion_Model'):
 			sup[f] = int( sup[f] )
 
-		main_model = {0:'433M',1:'868M',2:'915M',3:'WSUSB1G',4:'2.4G',5:'WSUSB3G'}
+		main_model = {0:'433M',1:'868M',2:'915M',3:'WSUB1G',4:'2.4G',5:'WSUB3G'}
 		sup['Main_Model'] = main_model[sup['Main_Model']]
 
 		expansion_model = {0:'433M',1:'868M',2:'915M',3:'WSUB1G',4:'2.4G',5:'WSUB3G', 255:''}
@@ -205,13 +202,16 @@ class RFE( object ):
 		for k,v in cfg.items():
 			self.config[k] = v
 
+		print self.config
+		sys.stdout.flush()
+
 	def decode_lcd( self, lcdstr ):
 		mem = []
 		for b in lcdstr:
 			b = ord(b)
 			mem += [b >> i & 1 for i in xrange(7,-1,-1)]
 		if len(mem) < 128*64:
-			mem = [0]*(128*64-len(mem)) + mem #TODO: wtf! missing byte at beginning of memory
+			raise Exception( 'truncated display memory packet' )
 		lcd = np.zeros( dtype=np.int, shape=(64,128) )
 		for y in xrange( 64 ):
 			for x in xrange( 128 ):
@@ -220,28 +220,13 @@ class RFE( object ):
 		self.lcd_data.put_nowait( lcd )
 
 	def decode_sweep( self, sweepstr ):
-		sweep_db = [-float(ord(x))/2.0 for x in sweepstr]
-		sweep_start = 1000 * self.config['Start_Freq']
-		sweep_step = self.config['Freq_Step']
-		sweep_end = sweep_start + sweep_step * self.config['Sweep_Steps']
-		sweep_freq = range( sweep_start, sweep_end, sweep_step )
-		sweep = zip( sweep_freq, sweep_db )
+		num_steps = ord(sweepstr[0])
+		sweep_db = np.array([-float(ord(x))/2.0 for x in sweepstr[1:]]) # skip first byte (sweep length)
+		sweep_start = self.config['Start_Freq']/1e3
+		sweep_step = self.config['Freq_Step']/1e6
+		sweep_end = sweep_start + sweep_step * self.config['Sweep_Steps'] * 0.999999 # to ensure exclusive upper boundary
+		sweep_freq = np.arange( sweep_start, sweep_end, sweep_step )
+		sweep = ( sweep_freq, sweep_db, (self.config['Amp_Bottom'], self.config['Amp_Top']) )
+		#print sweep_start, sweep_end, sweep_step, len(sweep[0]),len(sweep[1])
 		self.sweep_data.put_nowait( sweep )
 
-##################################################################################################
-# LCD Plot Worker World
-
-	def lcd_worker( self ):
-		while True:
-			lcd = self.lcd_data.get()
-			imgplot = plt.imshow( lcd )
-			plt.draw()
-			plt.show()
-
-##################################################################################################
-# Sweep Plot Worker World
-
-	def sweep_worker( self ):
-		while True:
-			sweep = self.sweep_data.get()
-			print sweep

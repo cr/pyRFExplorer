@@ -1,2 +1,2 @@
-__all__ = [ "rfe" ]
-from . import rfe
+__all__ = [ "rfe", "gui" ]
+from . import rfe, gui
