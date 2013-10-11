@@ -41,17 +41,17 @@ class MainWindow( object ):
 		Label(win, text='Firmware:'                       ).grid(in_=frame_a, row=2, column=0, sticky=E)
 		Label(win, text=self.rfe.config['FirmwareVersion']).grid(in_=frame_a, row=2, column=1, sticky=W)
 
-		Label(win, text='f min (kHz):'                  ).grid(in_=frame_a, row=4, column=0, sticky=E)
-		Label(win, text=str(self.rfe.config['Min_Freq'])).grid(in_=frame_a, row=4, column=1, sticky=W)
+		Label(win, text='f min (kHz):'                  ).grid(in_=frame_a, row=3, column=0, sticky=E)
+		Label(win, text=str(self.rfe.config['Min_Freq'])).grid(in_=frame_a, row=3, column=1, sticky=W)
 
-		Label(win, text='f max (MHz):'                  ).grid(in_=frame_a, row=5, column=0, sticky=E)
-		Label(win, text=str(self.rfe.config['Max_Freq'])).grid(in_=frame_a, row=5, column=1, sticky=W)
+		Label(win, text='f max (MHz):'                  ).grid(in_=frame_a, row=4, column=0, sticky=E)
+		Label(win, text=str(self.rfe.config['Max_Freq'])).grid(in_=frame_a, row=4, column=1, sticky=W)
 
-		Label(win, text='f span (MHz):'                 ).grid(in_=frame_a, row=6, column=0, sticky=E)
-		Label(win, text=str(self.rfe.config['Max_Span'])).grid(in_=frame_a, row=6, column=1, sticky=W)
+		Label(win, text='f span (MHz):'                 ).grid(in_=frame_a, row=5, column=0, sticky=E)
+		Label(win, text=str(self.rfe.config['Max_Span'])).grid(in_=frame_a, row=5, column=1, sticky=W)
 
-		Label(win, text='Sweep steps:'                     ).grid(in_=frame_a, row=3, column=0, sticky=E)
-		Label(win, text=str(self.rfe.config['Sweep_Steps'])).grid(in_=frame_a, row=3, column=1, sticky=W)
+		Label(win, text='Sweep steps:'                     ).grid(in_=frame_a, row=6, column=0, sticky=E)
+		Label(win, text=str(self.rfe.config['Sweep_Steps'])).grid(in_=frame_a, row=6, column=1, sticky=W)
 
 		self.fstart = StringVar()
 		self.fstart.set( str(self.rfe.config['Start_Freq']/1e3) )
