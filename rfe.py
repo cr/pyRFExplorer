@@ -4,7 +4,6 @@ import signal
 import sys
 import pyrfe
 from IPython import embed
-import time
 
 def graceful_exit( signal, frame ):
 	print "bye!"
@@ -13,11 +12,8 @@ def graceful_exit( signal, frame ):
 	sys.exit( 0 )
 
 rfe = pyrfe.rfe.RFE( '/dev/tty.SLAB_USBtoUART' )
-
-while len(rfe.config) == 0:
-	time.sleep(0.1)
-print rfe.config
-rfe.Enable_DumpScreen()
+rfe.Disable_DumpScreen()
+rfe.Disable_LCD()
 rfe.Enable_Sweep()
 
 win = pyrfe.rfe.MainWindow( rfe )
@@ -28,4 +24,5 @@ signal.signal( signal.SIGTERM, graceful_exit )
 #embed()
 win.mainloop()
 
+rfe.Enable_LCD()
 rfe.stop()

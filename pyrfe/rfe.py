@@ -25,6 +25,9 @@ class RFE( object ):
 		self.serialer = multiprocessing.Process( target=self.serial_worker, args=() )
 		self.start()
 		self.Request_Config()
+		# Wait until config is populated
+		while len(self.config)<11:
+			sleep( 0.1 )
 
 	def start( self ):
 		self.serialer.start()
@@ -54,20 +57,6 @@ class RFE( object ):
 	        inp += self.read()
 	    return inp
 
-	def to_ascii( self, value, digits, binary=False ):
-		if binary:
-			b = bin(value)[2:]
-			b = '0'*(digits-len(b))+b
-			return b
-		else:
-			return ("%0"+digits+"d") % value
-
-	def from_ascii( self, s, binary=False ):
-		if binary:
-			raise Exception('not implemented yet')
-		else:
-			return int(s)
-
 	def send( self, command ):
 		l = len( command )
 		if l>62:
@@ -83,7 +72,6 @@ class RFE( object ):
 		    It will change current configuration for RFE.
 		"""
 		c = "C2-F:%07d,%07d,%04d,%04d" % (Start_Freq, End_Freq, Amp_Top, Amp_Bottom)
-		print c
 		self.send( c )
 
 	def Request_Config( self ):
@@ -224,7 +212,7 @@ class RFE( object ):
 			b = ord(b)
 			mem += [b >> i & 1 for i in xrange(7,-1,-1)]
 		if len(mem) < 128*64:
-			raise Exception( 'truncated display memeory packet' )
+			raise Exception( 'truncated display memory packet' )
 		lcd = np.zeros( dtype=np.int, shape=(64,128) )
 		for y in xrange( 64 ):
 			for x in xrange( 128 ):
@@ -315,8 +303,7 @@ class MainWindow( object ):
 		Label(win, text=str(self.rfe.config['Sweep_Steps'])).grid(in_=frame_a, row=3, column=1, sticky=W)
 
 		self.fstart = StringVar()
-		#self.fstart.set( str(self.rfe.config['Start_Freq']) )
-		self.fstart.set( '430.0' )
+		self.fstart.set( str(self.rfe.config['Start_Freq']/1000.0) )
 
 		self.fspan = StringVar()
 		#self.fspan.set( str(self.rfe.config['Sweep_Steps']*self.rfe.config['Freq_Step']) )
