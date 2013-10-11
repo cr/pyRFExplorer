@@ -51,7 +51,7 @@ class RFE( object ):
 	    else:
 	      inp += self.dev.read( 2 )
 	      while inp[-2:] != until:
-	        inp += self.dev.read()
+	        inp += self.read()
 	    return inp
 
 	def to_ascii( self, value, digits, binary=False ):
@@ -82,7 +82,8 @@ class RFE( object ):
 		""" Send current Spectrum Analyzer configuration data.
 		    It will change current configuration for RFE.
 		"""
-		c = "C2-F:%s,%s,%s,%s" % (Start_Freq, End_Freq, Amp_Top, Amp_Bottom)
+		c = "C2-F:%07d,%07d,%04d,%04d" % (Start_Freq, End_Freq, Amp_Top, Amp_Bottom)
+		print c
 		self.send( c )
 
 	def Request_Config( self ):
@@ -182,7 +183,7 @@ class RFE( object ):
 		for f in ('Main_Model','Expansion_Model'):
 			sup[f] = int( sup[f] )
 
-		main_model = {0:'433M',1:'868M',2:'915M',3:'WSUSB1G',4:'2.4G',5:'WSUSB3G'}
+		main_model = {0:'433M',1:'868M',2:'915M',3:'WSUB1G',4:'2.4G',5:'WSUB3G'}
 		sup['Main_Model'] = main_model[sup['Main_Model']]
 
 		expansion_model = {0:'433M',1:'868M',2:'915M',3:'WSUB1G',4:'2.4G',5:'WSUB3G', 255:''}
@@ -265,9 +266,10 @@ class MainWindow( object ):
 	sweep_fstop = 0
 	sweep_flen = 0
 
-	def __init__( self, sweep_data_queue, lcd_data_queue ):
-		self.sweep_data = sweep_data_queue
-		self.lcd_data = lcd_data_queue
+	def __init__( self, rfe ):
+		self.rfe = rfe
+		self.sweep_data = self.rfe.sweep_data
+		self.lcd_data = self.rfe.lcd_data
 
 		self.application = Tk()
 		self.application.wm_title( 'RF Explorer' )		
@@ -292,58 +294,79 @@ class MainWindow( object ):
 		        frame.columnconfigure(col, weight=1)
 
 		model = StringVar()
-		model.set('WSUSB3G')
+		model.set( self.rfe.config['Main_Model'] )
 		Label(win, text='Main model:').grid(in_=frame_a, row=0, column=0, sticky=E)
 		Label(win, textvariable=model).grid(in_=frame_a, row=0, column=1, sticky=W)
 
 		exp = StringVar()
-		exp.set('WSUSB3G')
+		exp.set( self.rfe.config['Expansion_Model'] )
 		Label(win, text='Expansion:').grid(in_=frame_a, row=1, column=0, sticky=E)
 		Label(win, textvariable=exp).grid(in_=frame_a, row=1, column=1, sticky=W)
 
 		fw = StringVar()
-		fw.set('01.11')
+		fw.set( self.rfe.config['FirmwareVersion'] )
 		Label(win, text='Firmware:').grid(in_=frame_a, row=2, column=0, sticky=E)
 		Label(win, textvariable=fw).grid(in_=frame_a, row=2, column=1, sticky=W)
 
 		steps = StringVar()
-		steps.set('116')
+		steps.set( self.rfe.config['Sweep_Steps'] )
 		Label(win, text='Sweep steps:').grid(in_=frame_a, row=3, column=0, sticky=E)
 		Label(win, textvariable=steps).grid(in_=frame_a, row=3, column=1, sticky=W)
 
-		fmin = StringVar()
-		fmin.set('15000')
+		fmin = StringVar( )
+		fmin.set( self.rfe.config['Min_Freq'] )
 		Label(win, text='f min (kHz):').grid(in_=frame_a, row=4, column=0, sticky=E)
 		Label(win, textvariable=fmin).grid(in_=frame_a, row=4, column=1, sticky=W)
 
 		fmax = StringVar()
-		fmax.set('2700000')
-		Label(win, text='f max (kHz):').grid(in_=frame_a, row=5, column=0, sticky=E)
+		fmax.set( self.rfe.config['Max_Freq'] )
+		Label(win, text='f max (MHz):').grid(in_=frame_a, row=5, column=0, sticky=E)
 		Label(win, textvariable=fmax).grid(in_=frame_a, row=5, column=1, sticky=W)
 
+		fspan = StringVar()
+		fspan.set( self.rfe.config['Max_Span'] )
+		Label(win, text='f span (MHz):').grid(in_=frame_a, row=6, column=0, sticky=E)
+		Label(win, textvariable=fspan).grid(in_=frame_a, row=6, column=1, sticky=W)
+
+		self.fstart = StringVar()
+		#self.fstart.set( str(self.rfe.config['Start_Freq']) )
+		self.fstart.set( '430.0' )
+
+		self.fspan = StringVar()
+		#self.fspan.set( str(self.rfe.config['Sweep_Steps']*self.rfe.config['Freq_Step']) )
+		self.fspan.set( '10.0' )
+
+		self.amptop = StringVar()
+		self.amptop.set( str(self.rfe.config['Amp_Top']) )
+
+		self.ampbot = StringVar()
+		self.ampbot.set( str(self.rfe.config['Amp_Bottom']) )
 
 		Label(win, text='f start').grid(in_=frame_b, row=0, column=0, sticky=W)
-		Entry(win, width=9).grid(       in_=frame_b, row=0, column=1, sticky=W)
-		Label(win, text='kHz').grid(    in_=frame_b, row=0, column=2, sticky=E)
+		Entry(win, width=9, textvariable=self.fstart, validate='focusout', vcmd=self.config_entry).grid( in_=frame_b, row=0, column=1, sticky=W)
+		Label(win, text='MHz').grid(    in_=frame_b, row=0, column=2, sticky=E)
 
-		Label(win, text='f end').grid(in_=frame_b, row=1, column=0, sticky=W)
-		Entry(win, width=9).grid(     in_=frame_b, row=1, column=1, sticky=W)
-		Label(win, text='kHz').grid(  in_=frame_b, row=1, column=2, sticky=E)
+		Label(win, text='f span').grid(in_=frame_b, row=1, column=0, sticky=W)
+		Entry(win, width=9, textvariable=self.fspan, validate='focusout', vcmd=self.config_entry).grid(  in_=frame_b, row=1, column=1, sticky=W)
+		Label(win, text='MHz').grid(  in_=frame_b, row=1, column=2, sticky=E)
 
 		Label(win, text='Amp top').grid(in_=frame_b, row=2, column=0, sticky=W)
-		Entry(win, width=9).grid(       in_=frame_b, row=2, column=1, sticky=W)
+		Entry(win, width=9, textvariable=self.amptop, validate='focusout', vcmd=self.config_entry).grid( in_=frame_b, row=2, column=1, sticky=W)
 		Label(win, text='dB').grid(     in_=frame_b, row=2, column=2, sticky=E)
 
 		Label(win, text='Amp bottom').grid(in_=frame_b, row=3, column=0, sticky=W)
-		Entry(win, width=9).grid(          in_=frame_b, row=3, column=1, sticky=W)
+		Entry(win, width=9, textvariable=self.ampbot, validate='focusout', vcmd=self.config_entry).grid( in_=frame_b, row=3, column=1, sticky=W)
 		Label(win, text='dB').grid(        in_=frame_b, row=3, column=2, sticky=E)
 
-		sweep = IntVar()
-		lcddump = IntVar()
-		lcddisp = IntVar()
-		Checkbutton(win, text='Sweep data', variable=sweep).pack(in_=frame_c, anchor=W)
-		Checkbutton(win, text='LCD dump', variable=lcddump).pack(in_=frame_c, anchor=W)
-		Checkbutton(win, text='LCD display', variable=lcddisp).pack(in_=frame_c, anchor=W)
+		self.sweep_val = BooleanVar()
+		self.sweep_val.set( rfe.sweep_active.value )
+		self.lcddump_val = BooleanVar()
+		self.lcddump_val.set( True )
+		self.lcddisp_val = BooleanVar()
+		self.lcddisp_val.set( True )
+		Checkbutton(win, text='Sweep data',  variable=self.sweep_val,   command=self.sweep_check, ).pack(in_=frame_c, anchor=W)
+		Checkbutton(win, text='LCD dump',    variable=self.lcddump_val, command=self.lcddump_check).pack(in_=frame_c, anchor=W)
+		Checkbutton(win, text='LCD display', variable=self.lcddisp_val, command=self.lcddisp_check).pack(in_=frame_c, anchor=W)
 
 		self.frame = right
 		self.figure = mpl.figure.Figure( figsize=(8,6), dpi=100 )
@@ -388,6 +411,8 @@ class MainWindow( object ):
 	def update( self ):
 		if not self.sweep_data.empty():
 			freq, db, minmax = self.sweep_data.get()
+			if len(freq) != len(db):
+				return
 
 			if (self.sweep_avg is None) or (freq[0]!=self.sweep_fstart) or (freq[-1]!=self.sweep_fstop) or (len(freq)!=self.sweep_flen):
 				self.sweep_max = db
@@ -443,7 +468,7 @@ class MainWindow( object ):
 			lcd = np.kron( lcd, np.ones((3,3)) ) # scale by factor 2
 			self.img.set_array( lcd )
 			self.canvas.draw()
-			self.application.update()	
+			self.application.update()
 			#sys.stdout.write('L')
 			#sys.stdout.flush()
 			# flush queue if we're too slow
@@ -453,3 +478,36 @@ class MainWindow( object ):
 
 	def mainloop( self ):
 		self.application.mainloop()
+
+	def sweep_check( self ):
+		if self.sweep_val.get() == True:
+			self.rfe.Enable_Sweep()
+		else:
+			self.rfe.Disable_Sweep()
+
+	def lcddisp_check( self ):
+		if self.lcddisp_val.get() == True:
+			self.rfe.Enable_LCD()
+		else:
+			self.rfe.Disable_LCD()
+
+	def lcddump_check( self ):
+		if self.lcddump_val.get() == True:
+			self.rfe.Enable_DumpScreen()
+		else:
+			self.rfe.Disable_DumpScreen()
+
+	def config_entry( self ):
+		fstart = int(float(self.fstart.get())*1000.0)
+		if fstart<self.rfe.config['Min_Freq']:
+			return False
+		fspan = int(float(self.fspan.get())*1000.0)
+		if fspan>self.rfe.config['Max_Span']:
+			return False
+		fstop = fstart+fspan
+		if fstop>self.rfe.config['Max_Freq']:
+			return False
+		atop = int(self.amptop.get())
+		abot = int(self.ampbot.get())
+		self.rfe.Current_Config( fstart, fstop,atop, abot )
+		return True
