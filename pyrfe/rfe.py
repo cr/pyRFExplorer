@@ -221,11 +221,11 @@ class RFE( object ):
 
 	def decode_sweep( self, sweepstr ):
 		num_steps = ord(sweepstr[0])
-		sweep_db = np.array([-float(ord(x))/2.0 for x in sweepstr[1:]])
-		sweep_start = 1000 * self.config['Start_Freq']
-		sweep_step = self.config['Freq_Step']
-		sweep_end = sweep_start + sweep_step * self.config['Sweep_Steps']
-		sweep_freq = np.array(range( sweep_start, sweep_end, sweep_step ))
+		sweep_db = np.array([-float(ord(x))/2.0 for x in sweepstr[1:]]) # skip first byte (sweep length)
+		sweep_start = self.config['Start_Freq']/1e3
+		sweep_step = self.config['Freq_Step']/1e6
+		sweep_end = sweep_start + sweep_step * self.config['Sweep_Steps'] * 0.999999 # to ensure exclusive upper boundary
+		sweep_freq = np.arange( sweep_start, sweep_end, sweep_step )
 		sweep = ( sweep_freq, sweep_db, (self.config['Amp_Bottom'], self.config['Amp_Top']) )
-		#print sweep[1]
+		#print sweep_start, sweep_end, sweep_step, len(sweep[0]),len(sweep[1])
 		self.sweep_data.put_nowait( sweep )

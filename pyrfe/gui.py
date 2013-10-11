@@ -163,9 +163,11 @@ class MainWindow( object ):
 		self.application.destroy()
 
 	def update( self ):
+		self.application.after( 10, self.update )
 		if not self.sweep_data.empty():
 			freq, db, minmax = self.sweep_data.get()
 			if len(freq) != len(db):
+				print 'freq/db length mismatch'
 				return
 
 			if (self.sweep_avg is None) or (freq[0]!=self.sweep_fstart) or (freq[-1]!=self.sweep_fstop) or (len(freq)!=self.sweep_flen):
@@ -229,7 +231,6 @@ class MainWindow( object ):
 			# flush queue if we're too slow
 			while not self.lcd_data.empty():
 				self.lcd_data.get()
-		self.application.after( 10, self.update )
 
 	def mainloop( self ):
 		self.application.mainloop()
