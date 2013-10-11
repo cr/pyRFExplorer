@@ -264,18 +264,20 @@ class MainWindow( object ):
 		self.application.focus_force()
 		self.application.protocol( 'WM_DELETE_WINDOW', self.close )
 
-		win = Frame(self.application, bg='gray')
+		win = Frame(self.application, bg='white')
 		win.pack(side=LEFT, fill=Y)
 
-		right = Frame(self.application, bg='red', width=400, height=400)
+		right = Frame(self.application, bg='black', width=400, height=400)
 		right.pack(side=RIGHT, fill=BOTH, expand=1)
 
 		frame_a = LabelFrame(win, text='Info', padx=5, pady=5)
 		frame_b = LabelFrame(win, text='Sweep control', padx=5, pady=5)
 		frame_c = LabelFrame(win, text='Options', padx=5, pady=5)
+		frame_d = Frame( win, padx=0, pady=0 )
 		frame_a.grid(sticky=E+W)
 		frame_b.grid(sticky=E+W)
 		frame_c.grid(sticky=E+W)
+		frame_d.grid(sticky=E+W)
 
 		for frame in frame_a, frame_b, frame_c:
 		    for col in 0, 1, 2:
@@ -345,14 +347,18 @@ class MainWindow( object ):
 		self.frame = right
 		self.figure = mpl.figure.Figure( figsize=(8,6), dpi=100 )
 		self.canvas = FigureCanvasTkAgg( self.figure, master=self.frame )
+		self.figure_lcd = mpl.figure.Figure( figsize=(2,1), dpi=100, frameon=False )
+		self.canvas_lcd = FigureCanvasTkAgg( self.figure_lcd, master=frame_d )
 
-		gs = mpl.gridspec.GridSpec( 3, 1 )
-		self.sweep_subplot = self.figure.add_subplot( gs[1:,0] )
-		self.lcd_subplot = self.figure.add_subplot( gs[0,0] )
+		#gs = mpl.gridspec.GridSpec( 3, 1 )
+		#self.sweep_subplot = self.figure.add_subplot( gs[1:,0] )
+		#self.lcd_subplot = self.figure.add_subplot( gs[0,0] )
+		self.sweep_subplot = self.figure.add_subplot( '111' )
+		self.lcd_subplot = self.figure_lcd.add_subplot( '111' )
 
 		# style figure
-		#self.figure.patch.set_alpha( 0.0 ) # makes background patch invisible
-		#self.figure.patch.set_visible( False )
+		self.figure_lcd.patch.set_alpha( 0.0 ) # makes background patch invisible
+		self.figure_lcd.patch.set_visible( False )
 		self.figure.patch.set_color('black')
 
 		# style lcd
@@ -370,12 +376,17 @@ class MainWindow( object ):
 		self.sweep_subplot.tick_params( axis='x', colors='white' )  # ticks and tick labels
 		self.sweep_subplot.tick_params( axis='y', colors='white' )  # ticks and tick labels
 
-		#self.img = self.figure.figimage( np.random.random((64*3, 128*3)), cmap='Greys', xo=15, yo=408 )
-		self.img = self.lcd_subplot.matshow( np.random.random((64*3, 128*3)), cmap='Greys' )
+		#self.img = self.figure.figimage( np.random.random((64*1, 128*1)), cmap='Greys', xo=0, yo=0 )
+		#self.img = self.lcd_subplot.matshow( np.random.random((64*2, 128*2)), cmap='Greys' )
+		self.img = self.lcd_subplot.matshow( np.random.random((64*2, 128*2)), cmap='Greys' ) # why does only random work, not zeros or ones?
 
 		self.figure.tight_layout()
 		self.canvas.show()
 		self.canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
+
+		#self.figure_lcd.tight_layout()
+		self.canvas_lcd.show()
+		self.canvas_lcd.get_tk_widget().grid()
 		self.update()
 
 	def close( self ):
@@ -439,9 +450,10 @@ class MainWindow( object ):
 				self.sweep_data.get()
 		if not self.lcd_data.empty():
 			lcd = self.lcd_data.get()
-			lcd = np.kron( lcd, np.ones((3,3)) ) # scale by factor 2
+			lcd = np.kron( lcd, np.ones((2,2)) ) # scale by factor 2
 			self.img.set_array( lcd )
-			self.canvas.draw()
+			#self.canvas.draw()
+			self.canvas_lcd.draw()
 			self.application.update()
 			#sys.stdout.write('L')
 			#sys.stdout.flush()
