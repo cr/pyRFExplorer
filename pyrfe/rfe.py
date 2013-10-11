@@ -202,8 +202,8 @@ class RFE( object ):
 		for k,v in cfg.items():
 			self.config[k] = v
 
-		print self.config
-		sys.stdout.flush()
+		#print self.config
+		#sys.stdout.flush()
 
 	def decode_lcd( self, lcdstr ):
 		mem = []
