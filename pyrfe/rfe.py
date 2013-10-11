@@ -303,11 +303,12 @@ class MainWindow( object ):
 		Label(win, text=str(self.rfe.config['Sweep_Steps'])).grid(in_=frame_a, row=3, column=1, sticky=W)
 
 		self.fstart = StringVar()
-		self.fstart.set( str(self.rfe.config['Start_Freq']/1000.0) )
+		self.fstart.set( str(self.rfe.config['Start_Freq']/1e3) )
 
 		self.fspan = StringVar()
-		#self.fspan.set( str(self.rfe.config['Sweep_Steps']*self.rfe.config['Freq_Step']) )
-		self.fspan.set( '10.0' )
+		fspan = self.rfe.config['Sweep_Steps']*self.rfe.config['Freq_Step']
+		fspan = 1e3*round(fspan/1e3)/1e6
+		self.fspan.set( str(fspan) )
 
 		self.amptop = StringVar()
 		self.amptop.set( str(self.rfe.config['Amp_Top']) )
@@ -334,9 +335,9 @@ class MainWindow( object ):
 		self.sweep_val = BooleanVar()
 		self.sweep_val.set( rfe.sweep_active.value )
 		self.lcddump_val = BooleanVar()
-		self.lcddump_val.set( True )
+		self.lcddump_val.set( False )
 		self.lcddisp_val = BooleanVar()
-		self.lcddisp_val.set( True )
+		self.lcddisp_val.set( False )
 		Checkbutton(win, text='Sweep data',  variable=self.sweep_val,   command=self.sweep_check, ).pack(in_=frame_c, anchor=W)
 		Checkbutton(win, text='LCD dump',    variable=self.lcddump_val, command=self.lcddump_check).pack(in_=frame_c, anchor=W)
 		Checkbutton(win, text='LCD display', variable=self.lcddisp_val, command=self.lcddisp_check).pack(in_=frame_c, anchor=W)
