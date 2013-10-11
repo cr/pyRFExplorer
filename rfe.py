@@ -6,9 +6,13 @@ import pyrfe
 from IPython import embed
 
 def graceful_exit( signal, frame ):
-	print "bye!"
+	print "Shutting down RFE...",
+	rfe.Disable_DumpScreen()
+	rfe.Disable_Sweep()
+	rfe.Enable_LCD()
 	rfe.stop()
 	win.close()
+	print 'bye!'
 	sys.exit( 0 )
 
 rfe = pyrfe.rfe.RFE( '/dev/tty.SLAB_USBtoUART' )
