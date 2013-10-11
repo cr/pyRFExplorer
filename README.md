@@ -13,5 +13,5 @@ You need to have the SI-Labs driver installed.
 
 ## Usage
 
-Connect the RX Eplorer via USB, set it to spectrum analyser mode, edit the main rfe.py script to use the proper tty device, and run ./rfe.py
+Connect the RX Explorer via USB, set it to spectrum analyser mode, edit the main rfe.py script to use the proper tty device for your system, and run ./rfe.py
 
