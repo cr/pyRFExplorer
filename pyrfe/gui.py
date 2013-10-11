@@ -144,6 +144,7 @@ class MainWindow( object ):
 		#self.sweep_subplot.xaxis.label.set_color( 'white' )        # label color (we have none)
 		self.sweep_subplot.tick_params( axis='x', colors='white' )  # ticks and tick labels
 		self.sweep_subplot.tick_params( axis='y', colors='white' )  # ticks and tick labels
+		self.sweep_subplot.xaxis.get_major_formatter().set_scientific( False )
 
 		#self.img = self.figure.figimage( np.random.random((64*1, 128*1)), cmap='Greys', xo=0, yo=0 )
 		#self.img = self.lcd_subplot.matshow( np.random.random((64*2, 128*2)), cmap='Greys' )
@@ -163,11 +164,11 @@ class MainWindow( object ):
 		self.application.destroy()
 
 	def update( self ):
-		self.application.after( 10, self.update )
 		if not self.sweep_data.empty():
 			freq, db, minmax = self.sweep_data.get()
 			if len(freq) != len(db):
 				print 'freq/db length mismatch'
+				self.application.after( 10, self.update )
 				return
 
 			if (self.sweep_avg is None) or (freq[0]!=self.sweep_fstart) or (freq[-1]!=self.sweep_fstop) or (len(freq)!=self.sweep_flen):
@@ -231,6 +232,8 @@ class MainWindow( object ):
 			# flush queue if we're too slow
 			while not self.lcd_data.empty():
 				self.lcd_data.get()
+
+		self.application.after( 10, self.update )
 
 	def mainloop( self ):
 		self.application.mainloop()
