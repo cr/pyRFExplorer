@@ -2,31 +2,31 @@
 
 import signal
 import sys
-import pyrfe
+from pyrfe import *
 from IPython import embed
 
 def graceful_exit( signal, frame ):
 	print "Shutting down RFE...",
-	rfe.Disable_DumpScreen()
-	rfe.Disable_Sweep()
-	rfe.Enable_LCD()
-	rfe.stop()
-	win.close()
+	r.Disable_DumpScreen()
+	r.Disable_Sweep()
+	r.Enable_LCD()
+	r.stop()
+	g.close()
 	print 'bye!'
 	sys.exit( 0 )
 
-rfe = pyrfe.rfe.RFE( '/dev/tty.SLAB_USBtoUART' )
-rfe.Disable_DumpScreen()
-rfe.Disable_LCD()
-rfe.Enable_Sweep()
+r = rfe.RFE( '/dev/tty.SLAB_USBtoUART' )
+r.Disable_DumpScreen()
+r.Disable_LCD()
+r.Enable_Sweep()
 
-win = pyrfe.rfe.MainWindow( rfe )
+g = gui.MainWindow( r )
 
 signal.signal( signal.SIGINT, graceful_exit )
 signal.signal( signal.SIGTERM, graceful_exit )
 
 #embed()
-win.mainloop()
+g.mainloop()
 
-rfe.Enable_LCD()
-rfe.stop()
+r.Enable_LCD()
+r.stop()
