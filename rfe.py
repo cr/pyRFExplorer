@@ -28,5 +28,6 @@ signal.signal( signal.SIGTERM, graceful_exit )
 #embed()
 g.mainloop()
 
+r.Disable_DumpScreen()
 r.Enable_LCD()
 r.stop()
