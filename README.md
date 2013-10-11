@@ -1,7 +1,7 @@
 pyRFE - RF Explorer GUI in Python
 =======
 
-![screenshot](rfexplorer.png "RF Explorer alpha GUI")
+![ScreenShot](https://raw.github.com/cr/pyRFExplorer/master/pyrfexplorer.png)
 
 This is experimental code and most likely unfit for your purposes. It has been developed on an RF Explorer USB 3G model, but should run on others as well.
 
